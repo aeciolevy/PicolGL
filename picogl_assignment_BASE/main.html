@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<script src="../picogl_js/build/picogl.min.js"></script>
+<script src="../gl-matrix-master/dist/gl-matrix-min.js"></script>
+<script src="../spector.bundle.js"></script>
+
+<html>
+  <head>
+    <title>Basic picojl.js App</title>
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <canvas id="webgl-canvas"></canvas>
+</body>
+</html>
+
+<script type="shader" id="test_shared">
+  #version 300 es
+  
+  precision highp float;
+
+  uniform ShaderGlobals
+  {
+    mat4 modelMat;
+    mat4 viewMat;
+    mat4 projMat;
+    float iTime;
+    float fx;
+  };
+
+  // Noise functions from Inigo Quilez https://www.shadertoy.com/view/XdXGW8
+
+  vec2 hash( vec2 x )  // replace this by something better
+  {
+      const vec2 k = vec2( 0.3183099, 0.3678794 );
+      x = x*k + k.yx;
+      return -1.0 + 2.0*fract( 16.0 * k*fract( x.x*x.y*(x.x+x.y)) );
+  }
+
+  float noise( vec2 p )
+  {
+      vec2 i = floor( p );
+      vec2 f = fract( p );
+      vec2 u = f*f*(3.0-2.0*f);
+
+      return mix( mix( dot( hash( i + vec2(0.0,0.0) ), f - vec2(0.0,0.0) ), 
+                      dot( hash( i + vec2(1.0,0.0) ), f - vec2(1.0,0.0) ), u.x),
+                  mix( dot( hash( i + vec2(0.0,1.0) ), f - vec2(0.0,1.0) ), 
+                      dot( hash( i + vec2(1.0,1.0) ), f - vec2(1.0,1.0) ), u.x), u.y);
+  }
+
+  float noiseUV( vec2 uv )
+  {
+      uv *= 8.0;
+      mat2 m = mat2( 1.6,  1.2, -1.2,  1.6 );
+      float f  = 0.5000*noise( uv ); uv = m*uv;
+      f += 0.2500*noise( uv ); uv = m*uv;
+      f += 0.1250*noise( uv ); uv = m*uv;
+      f += 0.0625*noise( uv ); uv = m*uv;
+      return f;
+  }
+</script>
+
+<script type="shader/vs" id="test_vs">
+  in vec3 position;
+  in vec3 noiseSource;
+
+  out vec3 vWorldPos;
+  out float vData;
+
+  void main() {
+      vec3 objPos = position;
+
+      float squareLen = max(abs(objPos.x), abs(objPos.y));
+      objPos = normalize(objPos) * squareLen; // make the square a disk!
+ 
+      float fxSin = sin(fx * 3.14 * 2.0);
+
+      float mask = max(0.0, 1.0 - length(objPos.xy));
+      mask *= mask;
+
+      //float noise = noiseUV( position.xy );
+      float noise = mix(noiseSource.x, noiseSource.y, fxSin * 0.5 + 0.5 );
+      noise += noiseSource.z;
+
+      float displacement = abs(noise) * mask;// + noiseSource.z * 0.33;
+
+      vec3 objNormal = vec3(0,0,-1);
+      objPos += objNormal * 5.0 * displacement;
+     
+      vec3 worldPos = (modelMat * vec4(objPos, 1.0)).xyz;
+      vec3 viewPos = (viewMat * vec4(worldPos, 1.0)).xyz;
+      vec4 projPos = projMat * vec4(viewPos, 1.0);
+
+      // outputs
+      gl_Position = projPos;
+      vWorldPos = worldPos;
+      vData = displacement;
+  }
+</script>
+
+<script type="shader/fs" id="test_fs">
+
+  in vec3 vWorldPos;
+  in float vData;
+
+  out vec4 fragColor;
+
+  void main() {
+      // https://www.enkisoftware.com/devlogpost-20150131-1-Normal-generation-in-the-pixel-shader
+      vec3 posDx = dFdx( vWorldPos );
+      vec3 posDy = dFdy( vWorldPos );
+
+      vec3 psNormal = normalize( cross( posDx, posDy ) ); // world space!
+    
+      fragColor = vec4( vData * 3.0, psNormal.yy, 1.0);
+  }
+</script>
+
+<script src="main.js"></script>
