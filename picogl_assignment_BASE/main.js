@@ -169,11 +169,15 @@ class CircleObject {
     
     constructor() {
         this.rotation = { X: null, Y: null, Z: null};
+        // Generate rotations
         this.generateRotation();
+        // generate scalar between 0.5 and 1
         this.scaleFactor = randomBetweemDecimals(Math.random());
         this.scale = vec3.fromValues(this.scaleFactor, this.scaleFactor, this.scaleFactor);
+        // rotations for this particular circle
         this.instanceRotation = vec3.fromValues(this.rotation.X, this.rotation.Y, this.rotation.Z);
         this.draw = this.draw.bind(this);
+        // offset to build circle 
         this.offset = 2 * randomBetweemDecimals(Math.random()) * 3.14;
     }
 
@@ -211,9 +215,10 @@ class CircleObject {
 }
 
 let objects = [];
-const numberOfRings = 50;
+const numberOfRings = 12;
 
-for( let i = 0; i < 10 ; ++i) {
+// Interate to create rings
+for( let i = 0; i < numberOfRings ; ++i) {
     const circle = new CircleObject();
     objects.push(circle);
 }
@@ -221,7 +226,6 @@ for( let i = 0; i < 10 ; ++i) {
 
 function frameDraw() 
 {
-    
 
     time = window.performance.now() * 0.001; // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
     app.clear();
@@ -239,20 +243,7 @@ function frameDraw()
     objects.forEach(el => {
         el.draw(time)
     });
-    // drawMultiplesObjects(time);
-    // for(let index = 0; index < numberOfCircles; index++) {
-    //     modelMat = mat4.create();
-    //     mat4.rotate(modelMat, modelMat, time * 0.2, rotAxis1);
-    //     mat4.rotateY(modelMat, modelMat, angleToRotateY * index);
-    //     mat4.translate(modelMat, modelMat, translateAxisZ);
-    //     // mat4.rotateX(modelMat, modelMat, 3.14/2.0);
-    
-    //     uniformBuffer.set(0, modelMat);
-    //     uniformBuffer.update(); // this signals that we finished changing values and the buffer can be sent to the GPU
-    
-    //     drawObject.draw();    
-    // }
-    
+        
     requestAnimationFrame( frameDraw );
 
 }

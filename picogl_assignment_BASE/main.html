@@ -86,6 +86,7 @@
       mask *= mask;
 
       //float noise = noiseUV( position.xy );
+      // added normal to show pike
       float noise = mix(noiseSource.x, noiseSource.y, (fxSin * 0.5 * worldNormal.y) + 0.5 );
       noise += noiseSource.z;
 
