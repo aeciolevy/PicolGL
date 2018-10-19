@@ -66,7 +66,8 @@
 <script type="shader/vs" id="test_vs">
   in vec3 position;
   in vec3 noiseSource;
-
+  
+  out vec3 vWorldNormal;
   out vec3 vWorldPos;
   out float vData;
 
@@ -75,19 +76,23 @@
 
       float squareLen = max(abs(objPos.x), abs(objPos.y));
       objPos = normalize(objPos) * squareLen; // make the square a disk!
- 
+      
+      vec3 objNormal = vec3(0,0,-1);
+      vec3 worldNormal = (modelMat * vec4(objNormal, 1.0)).xyz;
+      
       float fxSin = sin(fx * 3.14 * 2.0);
 
       float mask = max(0.0, 1.0 - length(objPos.xy));
       mask *= mask;
 
       //float noise = noiseUV( position.xy );
-      float noise = mix(noiseSource.x, noiseSource.y, fxSin * 0.5 + 0.5 );
+      float noise = mix(noiseSource.x, noiseSource.y, (fxSin * 0.5 * worldNormal.y) + 0.5 );
       noise += noiseSource.z;
 
       float displacement = abs(noise) * mask;// + noiseSource.z * 0.33;
 
-      vec3 objNormal = vec3(0,0,-1);
+      
+      
       objPos += objNormal * 5.0 * displacement;
      
       vec3 worldPos = (modelMat * vec4(objPos, 1.0)).xyz;
@@ -95,6 +100,7 @@
       vec4 projPos = projMat * vec4(viewPos, 1.0);
 
       // outputs
+      vWorldNormal = normalize(worldNormal);
       gl_Position = projPos;
       vWorldPos = worldPos;
       vData = displacement;
@@ -102,7 +108,7 @@
 </script>
 
 <script type="shader/fs" id="test_fs">
-
+  in vec3 vWorldNormal;
   in vec3 vWorldPos;
   in float vData;
 
@@ -110,12 +116,13 @@
 
   void main() {
       // https://www.enkisoftware.com/devlogpost-20150131-1-Normal-generation-in-the-pixel-shader
+      
       vec3 posDx = dFdx( vWorldPos );
       vec3 posDy = dFdy( vWorldPos );
 
       vec3 psNormal = normalize( cross( posDx, posDy ) ); // world space!
     
-      fragColor = vec4( vData * 3.0, psNormal.yy, 1.0);
+      fragColor = vec4( vec3 (vData * 3.0, psNormal.yy ) + max(0.0, vWorldNormal.y), 1.0);
   }
 </script>
 

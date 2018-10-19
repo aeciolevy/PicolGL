@@ -141,7 +141,7 @@ mat4.perspective(projMat, Math.PI / 2, canvas.width / canvas.height, 0.1, 100.0)
 const viewMat = mat4.create();
 {
     // Position relative to the eyes
-    const eyePosition = vec3.fromValues(0, 0.75, -5.75);
+    const eyePosition = vec3.fromValues(0, 0.75, -10.75);
     const lookAtPos = vec3.fromValues(0, 0, 0);
     const lookUpVec = vec3.fromValues(0, 1, 0);
     mat4.lookAt(viewMat, eyePosition, lookAtPos, lookUpVec);
@@ -163,73 +163,97 @@ app.drawBackfaces(); // app.cullBackfaces();
 app.depthTest();
 app.clearColor(0.1, 0.1, 0.1, 1.0);
 
-function drawCircles() {
+const randomBetweemDecimals = data => data <= 0.5 ? data + 0.5 : data;
+
+class CircleObject {
     
-    const numberOfCircles = 16;
+    constructor() {
+        this.rotation = { X: null, Y: null, Z: null};
+        this.generateRotation();
+        this.scaleFactor = randomBetweemDecimals(Math.random());
+        this.scale = vec3.fromValues(this.scaleFactor, this.scaleFactor, this.scaleFactor);
+        this.instanceRotation = vec3.fromValues(this.rotation.X, this.rotation.Y, this.rotation.Z);
+        this.draw = this.draw.bind(this);
+        this.offset = 2 * randomBetweemDecimals(Math.random()) * 3.14;
+    }
 
-    for (let index = 0; index < numberOfCircles; index++) {
+    generateRotation() {
+        const u = Math.random();
+        const v = Math.random();
+        const angle1 = Math.PI * 2.0 * u;
+        const angle2 = Math.acos(2.0 * v - 1.0); 
+        this.rotation.X = Math.sin(angle1) * Math.cos(angle2);
+        this.rotation.Y = Math.sin(angle1) * Math.sin(angle1);
+        this.rotation.Z = Math.cos(angle1);
+    }
 
+    draw(time) {
+        
+        const rotAxis1 = vec3.fromValues(0, 1, 0);
+        const translateAxisZ = vec3.fromValues(0, 0, -5);
+        const numberOfCircles = 16;
         const angleToRotateY = (2 * 3.14) / numberOfCircles;
 
-        time = window.performance.now() * 0.001; // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
-        app.clear();
-    
-        uniformBuffer.set(3, time); // update the first slot, the float (iTime)    
-    
-        let fxTime = (time - fxStartTime) * fxSpeed;
-        if (fxTime > 1.0) {
-            fxStartTime = time;
-            fxTime = 0.0;
+        for (let index = 0; index < numberOfCircles; index++) {
+            modelMat = mat4.create();
+            mat4.rotate(modelMat, modelMat, this.offset + (time * 0.2) , this.instanceRotation);
+            mat4.rotateY(modelMat, modelMat, angleToRotateY * index);
+            mat4.translate(modelMat, modelMat, translateAxisZ);
+            mat4.scale(modelMat, modelMat, this.scale);
+
+            uniformBuffer.set(0, modelMat);
+            uniformBuffer.update(); // this signals that we finished changing values and the buffer can be sent to the GPU
+
+            drawObject.draw();
         }
-        uniformBuffer.set(4, fxTime);
-    
-        const rotAxis1 = vec3.fromValues(0, 1, 0);
-    
-        modelMat = mat4.create();
-        // mat4.rotate(modelMat, modelMat, time * 0.2, rotAxis1);
-        mat4.rotateY(modelMat, modelMat, angleToRotateY);
-        mat4.translate(modelMat, modelMat, vec3.fromValues(0, 0, -5));
-    
-        uniformBuffer.set(0, modelMat);
-        uniformBuffer.update(); // this signals that we finished changing values and the buffer can be sent to the GPU
-    
-        drawObject.draw();
-    
-        // requestAnimationFrame(frameDraw);
+
     }
 }
+
+let objects = [];
+const numberOfRings = 50;
+
+for( let i = 0; i < 10 ; ++i) {
+    const circle = new CircleObject();
+    objects.push(circle);
+}
+
 
 function frameDraw() 
 {
     
-    // console.log('test')
+
     time = window.performance.now() * 0.001; // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
     app.clear();
-
+    
     uniformBuffer.set(3, time); // update the first slot, the float (iTime)    
-
+    
     let fxTime = (time - fxStartTime) * fxSpeed;
     if(fxTime > 1.0)
     {
         fxStartTime = time;
-    fxTime = 0.0;
+        fxTime = 0.0;
     }
     uniformBuffer.set(4, fxTime);
-
-    const rotAxis1 = vec3.fromValues(0, 1, 0);
     
-    modelMat = mat4.create();
-    mat4.rotate(modelMat, modelMat, time * 0.2, rotAxis1);
-    mat4.rotateX(modelMat, modelMat, 3.14/2.0);
-
-    uniformBuffer.set(0, modelMat);
-    uniformBuffer.update(); // this signals that we finished changing values and the buffer can be sent to the GPU
-
-    drawObject.draw();    
+    objects.forEach(el => {
+        el.draw(time)
+    });
+    // drawMultiplesObjects(time);
+    // for(let index = 0; index < numberOfCircles; index++) {
+    //     modelMat = mat4.create();
+    //     mat4.rotate(modelMat, modelMat, time * 0.2, rotAxis1);
+    //     mat4.rotateY(modelMat, modelMat, angleToRotateY * index);
+    //     mat4.translate(modelMat, modelMat, translateAxisZ);
+    //     // mat4.rotateX(modelMat, modelMat, 3.14/2.0);
     
-     requestAnimationFrame( frameDraw );
-
+    //     uniformBuffer.set(0, modelMat);
+    //     uniformBuffer.update(); // this signals that we finished changing values and the buffer can be sent to the GPU
     
+    //     drawObject.draw();    
+    // }
+    
+    requestAnimationFrame( frameDraw );
 
 }
 
